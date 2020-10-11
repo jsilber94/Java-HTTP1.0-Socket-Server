@@ -156,18 +156,20 @@ public class HttpClient {
 
 
         // default headers
-        writer.println("Accept:" + "*/*");
         writer.println("Host: " + uri.getHost());
         writer.println("User-Agent: Concordia-HTTP/1.0");
 
         boolean isContentTypePresent = false;
         boolean isContentLengthPresent = false;
-
+        boolean isAcceptTypePresent= false;
         // add given headers
         if (headers != null) {
             for (String key : headers.keySet()) {
                 writer.println(key + ": " + headers.get(key));
 
+                if(key.toLowerCase().equals("accept ")){
+                    isAcceptTypePresent = true;
+                }
                 if (verb.equals("POST")) {
                     if (key.trim().equalsIgnoreCase("content-type")) {
                         isContentTypePresent = true;
@@ -190,6 +192,8 @@ public class HttpClient {
             if (filePayload != null)
                 writer.println("Content-Length:" + filePayload.length());
         }
+        if(!isAcceptTypePresent)
+            writer.println("Accept:" + "*/*");
 
         writer.println("Connection: close");
         writer.println();
