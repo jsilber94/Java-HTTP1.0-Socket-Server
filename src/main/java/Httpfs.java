@@ -9,7 +9,7 @@ public class Httpfs {
     public static void main(String[] args) {
         try {
             int port = 8080;
-            HttpServer.startServer(port, null);
+            HttpServer.startServer(port);
 
         } catch (Exception e) {
             e.printStackTrace();
