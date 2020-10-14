@@ -12,12 +12,14 @@ public class HttpServer {
 
     ServerSocket serverSocket;
 
-    public void startServer(int port) {
+    public void startServer(int port, String path, boolean verbose) {
         try {
             serverSocket = new ServerSocket(port);
-            System.out.println("Server has been started.");
+            if(verbose)
+                System.out.println("Server has been started.");
         } catch (IOException e) {
-            System.out.println("Could not create server socket on port " + port + ". Quitting.");
+            if(verbose)
+                System.out.println("Could not create server socket on port " + port + ". Quitting.");
             System.exit(-1);
         }
         Socket clientSocket = null;
@@ -27,11 +29,12 @@ public class HttpServer {
                     throw new Exception("Port is invalid. It must be between 1024 and 65535.");
 
                 clientSocket = serverSocket.accept();
+                if(verbose)
+                    System.out.println("New client has connected.");
+                if(verbose)
+                    System.out.println("Assigning new thread for the client");
 
-                System.out.println("New client has connected.");
-                System.out.println("Assigning new thread for the client");
-
-                new Thread(new ClientHandler(clientSocket)).start();
+                new Thread(new ClientHandler(clientSocket, path, verbose)).start();
 
             } catch (Exception e) {
                 System.out.println("Exception encountered on accept.");
@@ -45,10 +48,18 @@ public class HttpServer {
         Socket clientSocket;
         PrintWriter out;
         BufferedReader in;
+        String defaultDirectory;
         private int statusCode;
+        boolean verbose= false;
 
-        ClientHandler(Socket socket) {
+
+        ClientHandler(Socket socket, String path, boolean verbose) {
             clientSocket = socket;
+            this.verbose= verbose;
+            if (path == null)
+                defaultDirectory = System.getProperty("user.dir");
+            else
+                defaultDirectory = path.charAt(0) == '/' ? path.substring(1) : path;
         }
 
         @Override
@@ -61,11 +72,12 @@ public class HttpServer {
                 statusCode = 200;
                 sendResponse(response);
 
-
-                System.out.println("Server has been closed.");
+                if(verbose)
+                    System.out.println("Server has been closed.");
 
             } catch (Exception e) {
-                System.out.println("Server has been closed.");
+                if(verbose)
+                    System.out.println("Server has been closed.");
                 statusCode = 404;
                 sendResponse(e.getMessage());
             } finally {
@@ -112,12 +124,11 @@ public class HttpServer {
 
         private String dealWithGET(String path) throws Exception {
             if (determineIfFile(path)) {
-                byte[] encoded = Files.readAllBytes(Paths.get(path.substring(1)));
+                byte[] encoded = Files.readAllBytes(Paths.get(defaultDirectory+path.substring(1)));
                 return new String(encoded, StandardCharsets.US_ASCII);
             } else {
                 StringBuilder fileNames = new StringBuilder();
-                String userDirectory = System.getProperty("user.dir");
-                String fullPath = userDirectory + path;
+                String fullPath = defaultDirectory + path;
                 File folder = new File(fullPath);
                 File[] listOfFiles = folder.listFiles();
 
@@ -130,10 +141,10 @@ public class HttpServer {
 
         private String dealWithPOST(String path, String payload) throws Exception {
             if (path.indexOf("../") != -1) {
-                statusCode = 400;
+                statusCode = 403;
                 throw new Exception("Invalid path provided");
             }
-            String fullPath = System.getProperty("user.dir") + "/";
+            String fullPath = defaultDirectory + "/";
             path = path.substring(1);
             String[] paths = path.split("/");
 
@@ -158,11 +169,11 @@ public class HttpServer {
 
         private boolean determineIfFile(String path) throws Exception {
             if (path.indexOf("../") != -1) {
-                statusCode = 400;
+                statusCode = 403;
                 throw new Exception("Invalid path provided");
             }
 
-            File file = path.charAt(0) == '/' ? new File(path.substring(1)) : new File(path);
+            File file = path.charAt(0) == '/' ? new File(defaultDirectory + path.substring(1)) : new File(defaultDirectory + path);
             if (!file.exists()) {
                 statusCode = 400;
                 throw new Exception("Invalid path or file provided");
@@ -177,11 +188,14 @@ public class HttpServer {
             // Start sending our reply, using the HTTP 1.0 protocol
             out.println("HTTP/1.0 " + statusCode); // Version & status code
             out.println("Content-Type: text/plain"); // The type of data
-            if (!response.isEmpty())
+            if (!response.isEmpty()) {
+                out.println("Content-Disposition: " + "inline");
                 out.println("Content-length: " + response.length());
+            }
+
             out.println();
             out.println(response);
-            out.println("Connection: close"); // Will close stream
+            out.println("Connection: close");
             out.flush();
         }
     }
