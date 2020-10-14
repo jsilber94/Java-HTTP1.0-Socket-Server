@@ -61,14 +61,20 @@ public class HttpServer {
                 statusCode = 200;
                 sendResponse(response);
 
-                out.close();
-                clientSocket.close();
+
                 System.out.println("Server has been closed.");
 
             } catch (Exception e) {
                 System.out.println("Server has been closed.");
                 statusCode = 404;
                 sendResponse(e.getMessage());
+            } finally {
+                out.close();
+                try {
+                    clientSocket.close();
+                } catch (IOException exception) {
+                    exception.printStackTrace();
+                }
             }
         }
 
@@ -91,7 +97,7 @@ public class HttpServer {
             while (in.ready()) {
                 payload.append((char) in.read());
             }
-//            in.close;
+
             switch (method) {
                 case "GET":
                     return dealWithGET(path);
@@ -122,7 +128,11 @@ public class HttpServer {
             }
         }
 
-        private String dealWithPOST(String path, String payload) throws IOException {
+        private String dealWithPOST(String path, String payload) throws Exception {
+            if (path.indexOf("../") != -1) {
+                statusCode = 400;
+                throw new Exception("Invalid path provided");
+            }
             String fullPath = System.getProperty("user.dir") + "/";
             path = path.substring(1);
             String[] paths = path.split("/");
@@ -147,7 +157,7 @@ public class HttpServer {
         }
 
         private boolean determineIfFile(String path) throws Exception {
-            if (path.startsWith("../")) {
+            if (path.indexOf("../") != -1) {
                 statusCode = 400;
                 throw new Exception("Invalid path provided");
             }
@@ -155,7 +165,7 @@ public class HttpServer {
             File file = path.charAt(0) == '/' ? new File(path.substring(1)) : new File(path);
             if (!file.exists()) {
                 statusCode = 400;
-                throw new Exception("Invalid path provided");
+                throw new Exception("Invalid path or file provided");
             }
 
             if (file.isDirectory())
