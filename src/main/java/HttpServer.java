@@ -11,7 +11,7 @@ import java.nio.file.Paths;
 public class HttpServer {
 
     ServerSocket serverSocket;
-
+    //200.404.201.400.403
     public void startServer(int port, String path, boolean verbose) {
         try {
             serverSocket = new ServerSocket(port);
@@ -27,17 +27,19 @@ public class HttpServer {
             try {
                 if (!(port >= 1024 && port <= 65535))
                     throw new Exception("Port is invalid. It must be between 1024 and 65535.");
+//                if(path.indexOf("../")!=-1)
+//                    throw new Exception("\'../\' is not allowed in the path. ");
 
                 clientSocket = serverSocket.accept();
-                if(verbose)
+                if(verbose){
                     System.out.println("New client has connected.");
-                if(verbose)
                     System.out.println("Assigning new thread for the client");
+                }
 
                 new Thread(new ClientHandler(clientSocket, path, verbose)).start();
 
             } catch (Exception e) {
-                System.out.println("Exception encountered on accept.");
+                System.out.println("Exception encountered on accept. " + e.getMessage());
                 System.exit(-1);
             }
         }
@@ -45,12 +47,12 @@ public class HttpServer {
 
     class ClientHandler implements Runnable {
 
-        Socket clientSocket;
-        PrintWriter out;
-        BufferedReader in;
-        String defaultDirectory;
+        private Socket clientSocket;
+        private PrintWriter out;
+        private BufferedReader in;
+        private String defaultDirectory;
         private int statusCode;
-        boolean verbose= false;
+        boolean verbose = false;
 
 
         ClientHandler(Socket socket, String path, boolean verbose) {
@@ -124,9 +126,11 @@ public class HttpServer {
 
         private String dealWithGET(String path) throws Exception {
             if (determineIfFile(path)) {
+                // the file exists
                 byte[] encoded = Files.readAllBytes(Paths.get(defaultDirectory+path.substring(1)));
                 return new String(encoded, StandardCharsets.US_ASCII);
             } else {
+                //its a dir
                 StringBuilder fileNames = new StringBuilder();
                 String fullPath = defaultDirectory + path;
                 File folder = new File(fullPath);
@@ -163,7 +167,6 @@ public class HttpServer {
                     fw.close();
                 }
             }
-
             return "POST was successful";
         }
 
@@ -186,14 +189,13 @@ public class HttpServer {
 
         private void sendResponse(String response) {
             // Start sending our reply, using the HTTP 1.0 protocol
-            out.println("HTTP/1.0 " + statusCode); // Version & status code
+            out.println("HTTP/1.0 " + statusCode +" OK\r\n"); // Version & status code
             out.println("Content-Type: text/plain"); // The type of data
             if (!response.isEmpty()) {
                 out.println("Content-Disposition: " + "inline");
-                out.println("Content-length: " + response.length());
+                out.println("Content-Length: " + response.length());
             }
-
-            out.println();
+            out.println("\r\n");
             out.println(response);
             out.println("Connection: close");
             out.flush();
