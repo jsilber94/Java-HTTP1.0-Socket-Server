@@ -11,14 +11,15 @@ import java.nio.file.Paths;
 public class HttpServer {
 
     ServerSocket serverSocket;
+
     //200.404.201.400.403
     public void startServer(int port, String path, boolean verbose) {
         try {
             serverSocket = new ServerSocket(port);
-            if(verbose)
+            if (verbose)
                 System.out.println("Server has been started.");
         } catch (IOException e) {
-            if(verbose)
+            if (verbose)
                 System.out.println("Could not create server socket on port " + port + ". Quitting.");
             System.exit(-1);
         }
@@ -31,7 +32,7 @@ public class HttpServer {
 //                    throw new Exception("\'../\' is not allowed in the path. ");
 
                 clientSocket = serverSocket.accept();
-                if(verbose){
+                if (verbose) {
                     System.out.println("New client has connected.");
                     System.out.println("Assigning new thread for the client");
                 }
@@ -47,21 +48,21 @@ public class HttpServer {
 
     class ClientHandler implements Runnable {
 
+        boolean verbose = false;
         private Socket clientSocket;
         private PrintWriter out;
         private BufferedReader in;
         private String defaultDirectory;
         private int statusCode;
-        boolean verbose = false;
 
 
         ClientHandler(Socket socket, String path, boolean verbose) {
             clientSocket = socket;
-            this.verbose= verbose;
+            this.verbose = verbose;
             if (path == null)
                 defaultDirectory = System.getProperty("user.dir");
             else
-                defaultDirectory = path.charAt(0) == '/' ? path.substring(1) : path;
+                defaultDirectory = path.charAt(path.length()-1) == '/' ? path.substring(0,path.length()-1) : path;
         }
 
         @Override
@@ -74,13 +75,13 @@ public class HttpServer {
                 statusCode = 200;
                 sendResponse(response);
 
-                if(verbose)
+                if (verbose)
                     System.out.println("Server has been closed.");
 
             } catch (Exception e) {
-                if(verbose)
+                if (verbose)
                     System.out.println("Server has been closed.");
-                statusCode = 404;
+                statusCode = statusCode == 200 || statusCode == 0 ? 404 : statusCode;
                 sendResponse(e.getMessage());
             } finally {
                 out.close();
@@ -127,7 +128,7 @@ public class HttpServer {
         private String dealWithGET(String path) throws Exception {
             if (determineIfFile(path)) {
                 // the file exists
-                byte[] encoded = Files.readAllBytes(Paths.get(defaultDirectory+path.substring(1)));
+                byte[] encoded = Files.readAllBytes(Paths.get(defaultDirectory + path));
                 return new String(encoded, StandardCharsets.US_ASCII);
             } else {
                 //its a dir
@@ -176,7 +177,7 @@ public class HttpServer {
                 throw new Exception("Invalid path provided");
             }
 
-            File file = path.charAt(0) == '/' ? new File(defaultDirectory + path.substring(1)) : new File(defaultDirectory + path);
+            File file =  new File(defaultDirectory + path);
             if (!file.exists()) {
                 statusCode = 400;
                 throw new Exception("Invalid path or file provided");
@@ -189,7 +190,7 @@ public class HttpServer {
 
         private void sendResponse(String response) {
             // Start sending our reply, using the HTTP 1.0 protocol
-            out.println("HTTP/1.0 " + statusCode +" OK\r\n"); // Version & status code
+            out.println("HTTP/1.0 " + statusCode + " OK\r\n"); // Version & status code
             out.println("Content-Type: text/plain"); // The type of data
             if (!response.isEmpty()) {
                 out.println("Content-Disposition: " + "inline");

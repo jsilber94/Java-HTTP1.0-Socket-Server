@@ -9,21 +9,21 @@ public class Httpfs {
     public static void main(String[] args) {
         try {
             int port = 8080;
-            boolean verbose = false;
+            boolean verbose = true;
             String path = null;
 
-            if (args.length != 0)
-                for (int i = 0; i < args.length; i++) {
-                    if (args[i].equalsIgnoreCase("-p")) {
-                        port = Integer.parseInt(args[i + 1]);
-                    }
-                    if (args[i].equalsIgnoreCase("-v")) {
-                        verbose = true;
-                    }
-                    if (args[i].equalsIgnoreCase("-d")) {
-                        path = args[i + 1];
-                    }
-                }
+//            if (args.length != 0)
+//                for (int i = 0; i < args.length; i++) {
+//                    if (args[i].equalsIgnoreCase("-p")) {
+//                        port = Integer.parseInt(args[i + 1]);
+//                    }
+//                    if (args[i].equalsIgnoreCase("-v")) {
+//                        verbose = true;
+//                    }
+//                    if (args[i].equalsIgnoreCase("-d")) {
+//                        path = args[i + 1];
+//                    }
+//                }
 
             new HttpServer().startServer(port,path,verbose);
 
