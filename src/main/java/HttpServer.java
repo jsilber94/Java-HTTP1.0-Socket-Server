@@ -1,3 +1,4 @@
+import javax.swing.*;
 import java.io.*;
 import java.net.ServerSocket;
 import java.net.Socket;
@@ -128,8 +129,15 @@ public class HttpServer {
         private String dealWithGET(String path) throws Exception {
             if (determineIfFile(path)) {
                 // the file exists
-                byte[] encoded = Files.readAllBytes(Paths.get(defaultDirectory + path));
-                return new String(encoded, StandardCharsets.US_ASCII);
+                File file =  new File(defaultDirectory + path);
+                if(file.renameTo(file)){
+                    byte[] encoded = Files.readAllBytes(Paths.get(defaultDirectory + path));
+                    return new String(encoded, StandardCharsets.US_ASCII);
+                }else{
+                    statusCode = 406;
+                    throw new Exception("File is unable to be accessed Try again later.");
+                }
+
             } else {
                 //its a dir
                 StringBuilder fileNames = new StringBuilder();
@@ -179,7 +187,7 @@ public class HttpServer {
 
             File file =  new File(defaultDirectory + path);
             if (!file.exists()) {
-                statusCode = 400;
+                statusCode = 403;
                 throw new Exception("Invalid path or file provided");
             }
 
