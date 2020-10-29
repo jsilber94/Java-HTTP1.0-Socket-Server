@@ -133,6 +133,8 @@ public class HttpServer {
                     String fileExtension = getFileExtension(defaultDirectory + path);
                     if(fileExtension.equals("json"))
                         contentType="application/json";
+                    if(fileExtension.equals("html"))
+                        contentType="text/html";
                     byte[] encoded = Files.readAllBytes(Paths.get(defaultDirectory + path));
                     return new String(encoded, StandardCharsets.US_ASCII);
                 } else {
