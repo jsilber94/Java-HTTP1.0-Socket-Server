@@ -1,4 +1,3 @@
-import javax.swing.*;
 import java.io.*;
 import java.net.ServerSocket;
 import java.net.Socket;
@@ -13,7 +12,6 @@ public class HttpServer {
 
     ServerSocket serverSocket;
 
-    //200.404.201.400.403
     public void startServer(int port, String path, boolean verbose) {
         try {
             serverSocket = new ServerSocket(port);
@@ -55,6 +53,7 @@ public class HttpServer {
         private BufferedReader in;
         private String defaultDirectory;
         private int statusCode;
+        private String contentType = "text/plain";
 
 
         ClientHandler(Socket socket, String path, boolean verbose) {
@@ -63,7 +62,7 @@ public class HttpServer {
             if (path == null)
                 defaultDirectory = System.getProperty("user.dir");
             else
-                defaultDirectory = path.charAt(path.length()-1) == '/' ? path.substring(0,path.length()-1) : path;
+                defaultDirectory = path.charAt(path.length() - 1) == '/' ? path.substring(0, path.length() - 1) : path;
         }
 
         @Override
@@ -129,11 +128,14 @@ public class HttpServer {
         private String dealWithGET(String path) throws Exception {
             if (determineIfFile(path)) {
                 // the file exists
-                File file =  new File(defaultDirectory + path);
-                if(file.renameTo(file)){
+                File file = new File(defaultDirectory + path);
+                if (file.renameTo(file)) {
+                    String fileExtension = getFileExtension(defaultDirectory + path);
+                    if(fileExtension.equals("json"))
+                        contentType="application/json";
                     byte[] encoded = Files.readAllBytes(Paths.get(defaultDirectory + path));
                     return new String(encoded, StandardCharsets.US_ASCII);
-                }else{
+                } else {
                     statusCode = 406;
                     throw new Exception("File is unable to be accessed Try again later.");
                 }
@@ -169,11 +171,21 @@ public class HttpServer {
                     new File(fullPath).mkdirs();
                 }
                 if (i == paths.length - 1) {
-                    if (!currentPath.exists())
+                    if (!currentPath.exists()) {
                         new File(fullPath).createNewFile();
-                    FileWriter fw = new FileWriter(fullPath);
-                    fw.write(payload);
-                    fw.close();
+                        currentPath = new File(fullPath);
+                    }
+
+//                    File file = new File(fullPath);
+                    if (currentPath.renameTo(currentPath)) {
+                        FileWriter fw = new FileWriter(fullPath);
+                        fw.write(payload);
+                        fw.close();
+                    } else {
+                        statusCode = 406;
+                        throw new Exception("File is unable to be accessed Try again later.");
+                    }
+
                 }
             }
             return "POST was successful";
@@ -185,7 +197,7 @@ public class HttpServer {
                 throw new Exception("Invalid path provided");
             }
 
-            File file =  new File(defaultDirectory + path);
+            File file = new File(defaultDirectory + path);
             if (!file.exists()) {
                 statusCode = 403;
                 throw new Exception("Invalid path or file provided");
@@ -199,7 +211,7 @@ public class HttpServer {
         private void sendResponse(String response) {
             // Start sending our reply, using the HTTP 1.0 protocol
             out.println("HTTP/1.0 " + statusCode + " OK\r\n"); // Version & status code
-            out.println("Content-Type: text/plain"); // The type of data
+            out.println("Content-Type: " + contentType); // The type of data
             if (!response.isEmpty()) {
                 out.println("Content-Disposition: " + "inline");
                 out.println("Content-Length: " + response.length());
@@ -209,6 +221,17 @@ public class HttpServer {
             out.println("Connection: close");
             out.flush();
         }
+    }
+
+    /**
+     * https://github.com/google/guava
+     * @param fullName
+     * @return String
+     */
+    public static String getFileExtension(String fullName) {
+        String fileName = new File(fullName).getName();
+        int dotIndex = fileName.lastIndexOf('.');
+        return (dotIndex == -1) ? "" : fileName.substring(dotIndex + 1);
     }
 }
 
