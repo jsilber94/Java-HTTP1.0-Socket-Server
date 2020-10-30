@@ -12,6 +12,18 @@ public class HttpServer {
 
     ServerSocket serverSocket;
 
+    /**
+     * https://github.com/google/guava
+     *
+     * @param fullName
+     * @return String
+     */
+    public static String getFileExtension(String fullName) {
+        String fileName = new File(fullName).getName();
+        int dotIndex = fileName.lastIndexOf('.');
+        return (dotIndex == -1) ? "" : fileName.substring(dotIndex + 1);
+    }
+
     public void startServer(int port, String path, boolean verbose) {
         try {
             serverSocket = new ServerSocket(port);
@@ -47,12 +59,13 @@ public class HttpServer {
 
     class ClientHandler implements Runnable {
 
+        private final Socket clientSocket;
+        private final String defaultDirectory;
         boolean verbose = false;
-        private Socket clientSocket;
         private PrintWriter out;
         private BufferedReader in;
-        private String defaultDirectory;
         private int statusCode;
+        private String statusVerb;
         private String contentType = "text/plain";
 
 
@@ -73,6 +86,7 @@ public class HttpServer {
                 String response = dealWithRequest();
 
                 statusCode = 200;
+                statusVerb = "OK";
                 sendResponse(response);
 
                 if (verbose)
@@ -120,6 +134,7 @@ public class HttpServer {
                     return dealWithPOST(path, payload.toString());
                 default: {
                     statusCode = 400;
+                    statusVerb = "Bad Request";
                     throw new Exception("Invalid HTTP 1.0 verb provided.");
                 }
             }
@@ -131,14 +146,15 @@ public class HttpServer {
                 File file = new File(defaultDirectory + path);
                 if (file.renameTo(file)) {
                     String fileExtension = getFileExtension(defaultDirectory + path);
-                    if(fileExtension.equals("json"))
-                        contentType="application/json";
-                    if(fileExtension.equals("html"))
-                        contentType="text/html";
+                    if (fileExtension.equals("json"))
+                        contentType = "application/json";
+                    if (fileExtension.equals("html"))
+                        contentType = "text/html";
                     byte[] encoded = Files.readAllBytes(Paths.get(defaultDirectory + path));
                     return new String(encoded, StandardCharsets.US_ASCII);
                 } else {
                     statusCode = 406;
+                    statusVerb = "Not Acceptable";
                     throw new Exception("File is unable to be accessed Try again later.");
                 }
 
@@ -159,6 +175,7 @@ public class HttpServer {
         private String dealWithPOST(String path, String payload) throws Exception {
             if (path.indexOf("../") != -1) {
                 statusCode = 403;
+                statusVerb = "Forbidden";
                 throw new Exception("Invalid path provided");
             }
             String fullPath = defaultDirectory + "/";
@@ -185,6 +202,7 @@ public class HttpServer {
                         fw.close();
                     } else {
                         statusCode = 406;
+                        statusVerb = "Not Acceptable";
                         throw new Exception("File is unable to be accessed Try again later.");
                     }
 
@@ -196,12 +214,14 @@ public class HttpServer {
         private boolean determineIfFile(String path) throws Exception {
             if (path.indexOf("../") != -1) {
                 statusCode = 403;
+                statusVerb = "Forbidden";
                 throw new Exception("Invalid path provided");
             }
 
             File file = new File(defaultDirectory + path);
             if (!file.exists()) {
                 statusCode = 403;
+                statusVerb = "Forbidden";
                 throw new Exception("Invalid path or file provided");
             }
 
@@ -212,7 +232,7 @@ public class HttpServer {
 
         private void sendResponse(String response) {
             // Start sending our reply, using the HTTP 1.0 protocol
-            out.println("HTTP/1.0 " + statusCode + " OK\r\n"); // Version & status code
+            out.println("HTTP/1.0 " + statusCode + " " + statusVerb + "\r\n"); // Version & status code
             out.println("Content-Type: " + contentType); // The type of data
             if (!response.isEmpty()) {
                 out.println("Content-Disposition: " + "inline");
@@ -223,17 +243,6 @@ public class HttpServer {
             out.println("Connection: close");
             out.flush();
         }
-    }
-
-    /**
-     * https://github.com/google/guava
-     * @param fullName
-     * @return String
-     */
-    public static String getFileExtension(String fullName) {
-        String fileName = new File(fullName).getName();
-        int dotIndex = fileName.lastIndexOf('.');
-        return (dotIndex == -1) ? "" : fileName.substring(dotIndex + 1);
     }
 }
 
