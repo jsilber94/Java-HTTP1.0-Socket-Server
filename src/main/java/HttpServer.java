@@ -96,6 +96,7 @@ public class HttpServer {
                 if (verbose)
                     System.out.println("Server has been closed.");
                 statusCode = statusCode == 200 || statusCode == 0 ? 404 : statusCode;
+                statusVerb = statusCode == 200 || statusCode == 0 ? "OK": "Not Found";
                 sendResponse(e.getMessage());
             } finally {
                 out.close();
